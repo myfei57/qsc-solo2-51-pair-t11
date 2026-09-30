@@ -44,8 +44,8 @@ def test_parse_args_reads_flags():
     assert config == Config(host="0.0.0.0", port=9100, data_dir="tmp")
 
 
-def test_build_application_wires_the_console():
-    application = build_application(Config(data_dir="unused"))
+def test_build_application_wires_the_console(tmp_path):
+    application = build_application(Config(data_dir=str(tmp_path / "unused")))
     assert isinstance(application, Application)
     assert application.plant is not None
     assert application.console.plant is application.plant

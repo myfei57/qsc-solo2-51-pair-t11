@@ -105,6 +105,11 @@ def version(console, request: Request) -> Response:
     return json_response({"label": console.plant.build().label()})
 
 
+def store(console, request: Request) -> Response:
+    """Current store generation, checksum and recovery state."""
+    return json_response(console.plant.store_info())
+
+
 ROUTE_TABLE = (
     (routes.HEALTH, health),
     (routes.STATUS, status),
@@ -125,4 +130,5 @@ ROUTE_TABLE = (
     (routes.SUMMARY, summary),
     (routes.SELFTEST, selftest),
     (routes.VERSION, version),
+    (routes.STORE, store),
 )

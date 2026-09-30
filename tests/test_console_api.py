@@ -149,6 +149,48 @@ def test_version_reports_a_label(console):
     assert ok(console, "GET", "/api/version") == {"label": "desalplant/1.0.0"}
 
 
+def test_store_reports_the_current_generation(console):
+    body = ok(console, "GET", "/api/store")
+    assert body["generation"] == 0
+    assert body["consistent"] is True
+    assert body["recovered"] is False
+    assert body["rollback_count"] == 0
+    assert body["snapshot"]["count"] == 0
+    ok(console, "POST", "/api/start", {})
+    body = ok(console, "GET", "/api/store")
+    assert body["generation"] > 0
+    assert body["consistent"] is True
+    assert body["snapshot"]["count"] > 0
+
+
+def test_store_reports_a_rollback_after_recovery(console, tmp_path):
+    import json
+
+    from desalplant.app import build_application
+    from desalplant.config import Config
+    from desalplant.store.envelope import build as build_envelope
+
+    config = Config(data_dir=str(tmp_path / "data"))
+    first = build_application(config)
+    first.plant.start()
+    # Corrupt the head: valid JSON, but the checksum no longer matches.
+    head_path = tmp_path / "data" / "plant.json"
+    corrupt = build_envelope(1, {"plant/state": "running"})
+    tampered = {
+        "format": corrupt.to_dict()["format"],
+        "generation": 1,
+        "checksum": "deadbeef",
+        "data": {"plant/state": "running"},
+    }
+    head_path.write_text(json.dumps(tampered), encoding="utf-8")
+    reopened = build_application(config)
+    body = ok(reopened.console, "GET", "/api/store")
+    assert body["recovered"] is True
+    assert body["rollback_count"] == 1
+    assert body["recovery"]["record"]["from_generation"] == 1
+    assert body["recovery"]["record"]["reason"] == "head failed validation"
+
+
 def test_selftest_drives_a_full_cycle(console):
     body = ok(console, "GET", "/api/selftest")
     assert body["start_error"] == ""

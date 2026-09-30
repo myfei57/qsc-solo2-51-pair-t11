@@ -222,3 +222,16 @@ class Plant:
     def snapshot(self) -> Snapshot:
         """Frozen view of the persisted document."""
         return self.store.snapshot()
+
+    def store_info(self) -> dict[str, Any]:
+        """Generation, checksum and recovery state of the persisted document."""
+        report = self.store.recovery_report()
+        return {
+            "generation": self.store.generation,
+            "checksum": self.store.checksum(),
+            "consistent": self.store.verify_consistency(),
+            "recovered": self.store.recovered,
+            "rollback_count": self.store.rollback_count,
+            "recovery": None if report is None else report.to_dict(),
+            "snapshot": self.store.snapshot().to_dict(),
+        }

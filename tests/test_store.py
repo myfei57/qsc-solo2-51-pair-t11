@@ -86,11 +86,24 @@ def test_store_ignores_an_empty_document(tmp_path):
     assert Store(str(path)).count() == 0
 
 
-def test_store_rejects_a_non_object_document(tmp_path):
+def test_store_rolls_back_a_non_object_document(tmp_path):
     path = tmp_path / "plant.json"
     path.write_text("[1, 2]", encoding="utf-8")
-    with pytest.raises(StoreError):
-        Store(str(path))
+    store = Store(str(path))
+    assert store.recovered is True
+    assert store.rollback_count == 1
+    report = store.recovery_report()
+    assert report.rolled_back is True
+    assert report.record.reason == "no valid generation found"
+    # The rollback is recorded in the audit log.
+    assert store.get("audit/sequence") == 1
+    event = store.get("audit/event/000001")
+    assert event["kind"] == "rollback"
+    assert event["sequence"] == 1
+    assert store.get("audit/last/rollback") == 1
+    # The store is usable after rolling back.
+    store.put("plant/state", "running")
+    assert store.get("plant/state") == "running"
 
 
 def test_store_without_a_path_never_writes(tmp_path):
