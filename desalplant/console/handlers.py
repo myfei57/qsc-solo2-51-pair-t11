@@ -105,9 +105,15 @@ def version(console, request: Request) -> Response:
     return json_response({"label": console.plant.build().label()})
 
 
+def state(console, request: Request) -> Response:
+    """Active on-disk version, consistency and recovery history."""
+    return json_response(console.plant.persistence())
+
+
 ROUTE_TABLE = (
     (routes.HEALTH, health),
     (routes.STATUS, status),
+    (routes.STATE, state),
     (routes.TELEMETRY, telemetry),
     (routes.EVENTS, events),
     (routes.ALARMS, alarms),

@@ -86,11 +86,19 @@ def test_store_ignores_an_empty_document(tmp_path):
     assert Store(str(path)).count() == 0
 
 
-def test_store_rejects_a_non_object_document(tmp_path):
+def test_store_quarantines_an_unrecoverable_document_and_resets(tmp_path):
     path = tmp_path / "plant.json"
     path.write_text("[1, 2]", encoding="utf-8")
-    with pytest.raises(StoreError):
-        Store(str(path))
+    store = Store(str(path))
+    assert store.count() == 0
+    assert store.boot_report.action == "reset"
+    event = store.boot_report.event
+    assert event.kind == "reset"
+    assert event.reason == "not-an-object"
+    # rejected bytes are preserved as evidence, not deleted
+    quarantined = list((tmp_path / "plant.json.corrupt").iterdir())
+    assert len(quarantined) == 1
+    assert quarantined[0].read_text(encoding="utf-8") == "[1, 2]"
 
 
 def test_store_without_a_path_never_writes(tmp_path):

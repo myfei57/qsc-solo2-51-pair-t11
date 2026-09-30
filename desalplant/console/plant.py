@@ -222,3 +222,7 @@ class Plant:
     def snapshot(self) -> Snapshot:
         """Frozen view of the persisted document."""
         return self.store.snapshot()
+
+    def persistence(self) -> dict[str, Any]:
+        """Active on-disk version, consistency and recovery history."""
+        return self.store.persistence_view()

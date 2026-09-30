@@ -32,6 +32,11 @@ def build_application(config: Config) -> Application:
     store = Store(config.store_path())
     clock = LogicalClock()
     recorder = Recorder(store, clock)
+    # Surface a startup rollback/reset in the operational event record as well;
+    # the authoritative, rollback-proof evidence stays in the recovery journal.
+    boot = store.boot_report
+    if boot.event is not None and boot.action != "loaded":
+        recorder.log(f"state-recovery-{boot.action}", _describe_boot(store))
     plant = Plant(store, clock, recorder)
     console = Console(plant)
     return Application(
@@ -42,3 +47,14 @@ def build_application(config: Config) -> Application:
         plant=plant,
         console=console,
     )
+
+
+def _describe_boot(store: Store) -> str:
+    summary = store.boot_summary()
+    if summary["action"] == "rollback":
+        return (
+            f"rolled back corrupt version {summary.get('rejected_version')} "
+            f"(checksum {summary.get('rejected_checksum')}); restored "
+            f"version {summary['version']}"
+        )
+    return f"state reset after unrecoverable document: {summary.get('reason')}"
